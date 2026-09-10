@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>SoDDiskAvailability</AssemblyName>
+    <Version>0.3.0</Version>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/core', '*.dll'))" Private="false" />
+    <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/interop', '*.dll'))" Private="false" />
+  </ItemGroup>
+</Project>
+ 

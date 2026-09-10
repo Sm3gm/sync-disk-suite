@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>SoDDiskPack</AssemblyName>
+    <Version>0.12.1</Version>
+    <NoWarn>$(NoWarn);MSB3277;CS0436</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="../SoDHello/refs/core/*.dll" Private="false" />
+    <Reference Include="../SoDHello/refs/interop/*.dll" Private="false" />
+    <Reference Include="../SoDHello/refs/plugins/Venomaus-SODCommon/SOD.Common.dll" Private="false" />
+  </ItemGroup>
+</Project>

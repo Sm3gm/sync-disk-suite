@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>SoDVanillaSplit</AssemblyName>
+    <Version>0.4.1</Version>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/core', '*.dll'))" />
+    <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/interop', '*.dll'))" />
+    <Reference Include="$(MSBuildProjectDirectory)/../SoDHello/refs/plugins/Venomaus-SODCommon/SOD.Common.dll" />
+  </ItemGroup>
+</Project>

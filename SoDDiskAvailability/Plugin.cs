@@ -1,0 +1,354 @@
+using System;
+using System.Collections.Generic;
+using BepInEx;
+using BepInEx.Configuration;
+using BepInEx.Unity.IL2CPP;
+using HarmonyLib;
+using UnityEngine;
+ 
+namespace SoDDiskAvailability;
+ 
+[BepInPlugin(GUID, "SoD Disk Availability", VER)]
+[BepInDependency("ta.sod.vanillasplit", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("ta.sod.syncdiskpack", BepInDependency.DependencyFlags.SoftDependency)]
+public class Plugin : BasePlugin
+{
+    public const string GUID = "ta.sod.diskavailability";
+    public const string VER = "0.3.0";
+ 
+    internal static BepInEx.Logging.ManualLogSource L;
+ 
+    internal static ConfigEntry<string> Mode;
+    internal static ConfigEntry<int> Salt;
+    internal static ConfigEntry<bool> LogStock;
+        public static ConfigEntry<bool> DedupeMenus;
+ 
+    // One block of keys per vendor pool.
+    internal static readonly List<Pool> Pools = new();
+ 
+    public override void Load()
+    {
+        L = Log;
+        L.LogInfo("=== SoD Disk Availability " + VER + " starting ===");
+ 
+        Mode = Config.Bind("General", "Mode", "Rotation",
+            "Unrestricted = every disk stocked everywhere, always. "
+          + "Vanilla = restore the stock lists as the game shipped them. "
+          + "Rotation = each vendor stocks a small set that changes daily.");
+ 
+        Salt = Config.Bind("General", "RotationSalt", 0,
+            "Change this number to get a different rotation sequence. "
+          + "Rotation is derived from the in-game day plus this salt, so the same "
+          + "day always produces the same stock and reloading never rerolls it.");
+ 
+                LogStock = Config.Bind("General", "LogStockToConsole", true,
+            "Write the chosen stock to the BepInEx log on every rotation.");
+
+        DedupeMenus = Config.Bind("General", "FixVendorDuplicates", true,
+            "Removes duplicate sync disk entries that build up in vendor stock lists "
+          + "when a city is loaded more than once in the same session. Works around a "
+          + "known issue in SOD.Common 2.1.4. Leave this on unless it conflicts with another mod.");
+
+        DedupePatch.Enabled = DedupeMenus.Value;
+        DedupePatch.Log = L;
+ 
+        // preset name, default count, default extra random slots
+        Add("SyncClinic", "SyncClinics", 4, 0,
+            "The ordinary sync clinics. There are usually six or seven in a city and "
+          + "they all share one stock list, so they will show the same disks as each other.");
+        Add("BlackmarketSyncClinic", "BlackMarketClinic", 6, 0,
+            "The black market doctor. Stocks independently of the ordinary clinics.");
+        Add("BlackmarketTrader", "BlackMarketTrader", 3, 0,
+            "The black market trader. Vanilla sells almost no disks here.");
+        Add("WeaponsDealer", "WeaponsDealer", 3, 0,
+            "The arms dealer. Vanilla sells no disks here at all, so this gives a "
+          + "reason to visit in person.");
+        Add("Newsstand", "Newsstands", 2, 0,
+            "Street newsstands. Vanilla draws one random CandorNews disk.");
+        Add("NewspaperBox", "NewspaperBoxes", 2, 0,
+            "Coin-operated newspaper boxes. Vanilla sells no disks here.");
+ 
+        Harmony.CreateAndPatchAll(typeof(StockPatch));
+                Harmony.CreateAndPatchAll(typeof(DedupePatch));
+        AddComponent<DayWatcher>();
+ 
+        L.LogInfo("=== SoD Disk Availability ready, mode=" + Mode.Value + " ===");
+    }
+ 
+    void Add(string preset, string section, int count, int slots, string blurb)
+    {
+        var p = new Pool
+        {
+            Preset = preset,
+            Enabled = Config.Bind(section, "Enabled", true,
+                blurb + " Set false to leave this vendor exactly as the game left it."),
+            Count = Config.Bind(section, "DisksInStock", count,
+                "How many disks this vendor offers at once in Rotation mode. 0 for none."),
+            Slots = Config.Bind(section, "ExtraRandomSlots", slots,
+                "Additional disks the game draws at random on top of the list above, "
+              + "filtered by the manufacturers below. Vanilla uses 1 for sync clinics."),
+            Manufacturers = Config.Bind(section, "RestrictToManufacturers", "",
+                "Comma separated. Blank means draw from every disk in the game. "
+              + "Valid names: ElGen, Kaizen, KensingtonIndigo, StarchKola, CandorNews, BlackMarket.")
+        };
+        Pools.Add(p);
+    }
+}
+ 
+internal class Pool
+{
+    public string Preset;
+    public ConfigEntry<bool> Enabled;
+    public ConfigEntry<int> Count;
+    public ConfigEntry<int> Slots;
+    public ConfigEntry<string> Manufacturers;
+}
+ 
+// Runs after SoDVanillaSplit's own Toolbox.Start postfix, so the pool it captures
+// already reflects any parent removal and any custom disks that were registered.
+[HarmonyPatch(typeof(Toolbox), nameof(Toolbox.Start))]
+public static class StockPatch
+{
+    static bool captured = false;
+ 
+    [HarmonyPriority(Priority.Last)]
+    static void Postfix()
+    {
+        if (captured) return;
+        captured = true;
+ 
+        try
+        {
+            Stock.CaptureOriginals();
+            Stock.Apply(force: true);
+        }
+        catch (Exception e)
+        {
+            Plugin.L.LogError("initial stock pass failed: " + e);
+        }
+    }
+}
+ 
+// Polls for the in-game day changing. Cheap: one int compare per second.
+public class DayWatcher : MonoBehaviour
+{
+    public DayWatcher(IntPtr ptr) : base(ptr) { }
+ 
+    float _next;
+ 
+    void Update()
+    {
+        if (Time.time < _next) return;
+        _next = Time.time + 1f;
+ 
+        try { Stock.Apply(force: false); }
+        catch { /* a failed poll must never spam or crash */ }
+    }
+}
+ 
+internal static class Stock
+{
+    // The full set of disks available to draw from, snapshotted once.
+    static readonly List<SyncDiskPreset> MasterPool = new();
+ 
+    // Each pool's stock list exactly as the game had it, for Vanilla mode.
+    static readonly Dictionary<string, List<SyncDiskPreset>> Originals = new();
+    static readonly Dictionary<string, int> OriginalSlots = new();
+ 
+    static int _lastDay = int.MinValue;
+    static string _lastMode = null;
+ 
+    public static void CaptureOriginals()
+    {
+        MasterPool.Clear();
+        Originals.Clear();
+        OriginalSlots.Clear();
+ 
+        var all = Toolbox.Instance.allSyncDisks;
+        if (all == null)
+        {
+            Plugin.L.LogError("Toolbox.allSyncDisks null - availability disabled this session");
+            return;
+        }
+ 
+        for (int i = 0; i < all.Count; i++)
+        {
+            var p = all[i];
+            if (p == null) continue;
+            if (p.disabled) continue;
+            MasterPool.Add(p);
+        }
+ 
+        var menus = Resources.FindObjectsOfTypeAll<MenuPreset>();
+        if (menus != null)
+        {
+            foreach (var m in menus)
+            {
+                if (m == null || m.name == null) continue;
+                if (Originals.ContainsKey(m.name)) continue;   // presets can appear twice
+ 
+                var snap = new List<SyncDiskPreset>();
+                if (m.syncDisks != null)
+                {
+                    for (int i = 0; i < m.syncDisks.Count; i++)
+                    {
+                        var p = m.syncDisks[i];
+                        if (p != null) snap.Add(p);
+                    }
+                }
+                Originals[m.name] = snap;
+                OriginalSlots[m.name] = m.syncDiskSlots;
+            }
+        }
+ 
+        Plugin.L.LogInfo("=== captured " + MasterPool.Count + " disks in the master pool, "
+                       + Originals.Count + " menu presets snapshotted ===");
+    }
+ 
+    static int CurrentDay()
+    {
+        try { return SessionData.Instance.dayInt; }
+        catch { return 0; }
+    }
+ 
+    public static void Apply(bool force)
+    {
+        if (MasterPool.Count == 0) return;
+ 
+        string mode = (Plugin.Mode.Value ?? "Rotation").Trim();
+        int day = CurrentDay();
+ 
+        if (!force && day == _lastDay && mode == _lastMode) return;
+        _lastDay = day;
+        _lastMode = mode;
+ 
+        bool unrestricted = mode.Equals("Unrestricted", StringComparison.OrdinalIgnoreCase);
+        bool vanilla = mode.Equals("Vanilla", StringComparison.OrdinalIgnoreCase);
+ 
+        foreach (var pool in Plugin.Pools)
+        {
+            if (!pool.Enabled.Value) continue;
+ 
+            var menus = Resources.FindObjectsOfTypeAll<MenuPreset>();
+            if (menus == null) continue;
+ 
+            foreach (var m in menus)
+            {
+                if (m == null || m.name != pool.Preset) continue;
+                if (m.syncDisks == null) continue;
+ 
+                if (vanilla)
+                {
+                    WriteList(m, Originals.ContainsKey(m.name) ? Originals[m.name] : new List<SyncDiskPreset>());
+                    if (OriginalSlots.ContainsKey(m.name)) m.syncDiskSlots = OriginalSlots[m.name];
+                    continue;
+                }
+ 
+                if (unrestricted)
+                {
+                    WriteList(m, MasterPool);
+                    m.syncDiskSlots = pool.Slots.Value;
+                    continue;
+                }
+ 
+                // Rotation
+                var eligible = Filter(pool.Manufacturers.Value);
+                var picked = Pick(eligible, pool.Count.Value, day, pool.Preset);
+                WriteList(m, picked);
+                m.syncDiskSlots = pool.Slots.Value;
+ 
+                if (Plugin.LogStock.Value)
+                {
+                    var names = new System.Text.StringBuilder();
+                    foreach (var p in picked)
+                    {
+                        if (names.Length > 0) names.Append(", ");
+                        names.Append(Short(p.name));
+                    }
+                    Plugin.L.LogInfo("[STOCK] day " + day + " " + pool.Preset
+                                   + " (" + picked.Count + "): " + names);
+                }
+            }
+        }
+    }
+ 
+    // Custom disks are named {id}_{hash}_{bool}_{Name}. Log only the readable part.
+    static string Short(string n)
+    {
+        if (string.IsNullOrEmpty(n)) return "?";
+        int i = n.LastIndexOf('_');
+        return i >= 0 && i < n.Length - 1 ? n.Substring(i + 1) : n;
+    }
+ 
+    static void WriteList(MenuPreset m, List<SyncDiskPreset> items)
+    {
+        // Wholesale rewrite, which makes this naturally idempotent. That matters:
+        // SOD.Common appends custom disks to menu presets once per city load with
+        // no containment check, and this pass overwrites the duplicates away.
+        m.syncDisks.Clear();
+        foreach (var p in items)
+        {
+            if (p != null) m.syncDisks.Add(p);
+        }
+    }
+ 
+    static List<SyncDiskPreset> Filter(string csv)
+    {
+        if (string.IsNullOrEmpty(csv) || csv.Trim().Length == 0) return MasterPool;
+ 
+        var wanted = new List<string>();
+        foreach (var s in csv.Split(','))
+        {
+            var t = s.Trim();
+            if (t.Length > 0) wanted.Add(t);
+        }
+        if (wanted.Count == 0) return MasterPool;
+ 
+        var outp = new List<SyncDiskPreset>();
+        foreach (var p in MasterPool)
+        {
+            string mfr;
+            try { mfr = p.manufacturer.ToString(); } catch { continue; }
+            foreach (var w in wanted)
+            {
+                if (string.Equals(mfr, w, StringComparison.OrdinalIgnoreCase)) { outp.Add(p); break; }
+            }
+        }
+        return outp.Count > 0 ? outp : MasterPool;
+    }
+ 
+    // Deterministic shuffle. Same day plus same salt plus same vendor always
+    // gives the same stock, so a save reload never rerolls the shop.
+    //
+    // TODO: mix a city seed in here so two different cities differ on day 1.
+    // Nothing in the assembly has been confirmed to expose one yet.
+    static List<SyncDiskPreset> Pick(List<SyncDiskPreset> from, int count, int day, string vendor)
+    {
+        var result = new List<SyncDiskPreset>();
+        if (count <= 0 || from.Count == 0) return result;
+        if (count >= from.Count)
+        {
+            result.AddRange(from);
+            return result;
+        }
+ 
+        uint seed = (uint)(day * 2654435761u);
+        seed ^= (uint)(Plugin.Salt.Value * 40503);
+        foreach (char c in vendor) seed = seed * 31u + c;
+        if (seed == 0) seed = 2463534242u;
+ 
+        var idx = new List<int>();
+        for (int i = 0; i < from.Count; i++) idx.Add(i);
+ 
+        // Fisher-Yates driven by xorshift32.
+        for (int i = idx.Count - 1; i > 0; i--)
+        {
+            seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+            int j = (int)(seed % (uint)(i + 1));
+            int tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
+        }
+ 
+        for (int i = 0; i < count; i++) result.Add(from[idx[i]]);
+        return result;
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "SyncDiskSuite",
+    "version_number": "1.0.1",
+    "website_url": "https://github.com/sm3gm/sync-disk-suite",
+    "description": "Adds 12 new sync disks and splits 37 vanilla disk branches into standalone disks. Three tiers each, real trade-offs, and the only route to a full twelve-slot inventory.",
+    "dependencies": [
+      "Venomaus-SODCommon-2.1.4"
+    ]
+  }
