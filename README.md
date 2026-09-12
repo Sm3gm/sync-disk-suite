@@ -179,9 +179,11 @@ Six independently configurable pools. Each has `Enabled`, `DisksInStock`, `Extra
 
 **New disks only appear as world loot in a freshly generated city.** Loot is decided when the city is built. On an existing save the new disks will show up in shops but never in containers.
 
-**Combined vanilla disks can still turn up as loot even with `RemoveVanillaParents` enabled.** The setting reliably removes them from shop stock, but not yet from container loot. You will occasionally find a combined parent in an apartment. It works normally if you install it. This is a known limitation rather than a bug report, it is cosmetic, and it is still being investigated.
+**Combined vanilla disks can still turn up as loot even with `RemoveVanillaParents` enabled.** The setting reliably removes them from shop stock, but container loot is filled from somewhere else entirely, so a combined parent will occasionally appear in an apartment. It works normally if you install it. Cosmetic, and there is no fix from this end.
 
 **Street Cleaner and Bookworm lose their third tier when split.** In vanilla, that tier upgrades *both* branches at once. A split disk has no sibling branch to upgrade, so the tier does nothing. Harmless, and it only affects those two.
+
+**Do not install both perception splits at once.** Physiological Perception and Socioeconomic Perception both come from Dove Plus, and each inherits the dialogue penalty the parent carries. Vanilla only ever lets you hold one, so installing both doubles it and shopkeepers around the city may start demanding a password from you. Uninstalling one of them restores normal service straight away.
 
 **The Black Market Trader and the Weapons Dealer only let you in with a password.** The game shows it only in graffiti tags around town, and a tag is sometimes blank. The trader's rotation works normally once you are in. If the password is the problem, my separate mod [Black Market Passwords](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/BlackMarketPasswords/) writes the current passwords into a sticky note.
 

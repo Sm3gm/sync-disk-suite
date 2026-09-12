@@ -14,7 +14,7 @@ namespace SoDDiskAvailability;
 public class Plugin : BasePlugin
 {
     public const string GUID = "ta.sod.diskavailability";
-    public const string VER = "0.3.0";
+    public const string VER = "0.3.1";
  
     internal static BepInEx.Logging.ManualLogSource L;
  
@@ -70,6 +70,7 @@ public class Plugin : BasePlugin
  
         Harmony.CreateAndPatchAll(typeof(StockPatch));
                 Harmony.CreateAndPatchAll(typeof(DedupePatch));
+        Harmony.CreateAndPatchAll(typeof(LoadAllPatch));
         AddComponent<DayWatcher>();
  
         L.LogInfo("=== SoD Disk Availability ready, mode=" + Mode.Value + " ===");
@@ -128,7 +129,18 @@ public static class StockPatch
         }
     }
 }
- 
+
+[HarmonyPatch(typeof(Toolbox), "LoadAll")]
+public static class LoadAllPatch
+{
+    [HarmonyPriority(Priority.Last)]
+    static void Postfix()
+    {
+        try { Stock.Apply(force: true); }
+        catch { }
+    }
+}
+
 // Polls for the in-game day changing. Cheap: one int compare per second.
 public class DayWatcher : MonoBehaviour
 {
@@ -211,9 +223,19 @@ internal static class Stock
         catch { return 0; }
     }
  
+    static bool _warnedNoPool = false;
+
     public static void Apply(bool force)
     {
-        if (MasterPool.Count == 0) return;
+        if (MasterPool.Count == 0)
+        {
+            if (!_warnedNoPool)
+            {
+                _warnedNoPool = true;
+                Plugin.L.LogInfo("[STOCK] apply skipped, master pool not captured yet");
+            }
+            return;
+        }
  
         string mode = (Plugin.Mode.Value ?? "Rotation").Trim();
         int day = CurrentDay();

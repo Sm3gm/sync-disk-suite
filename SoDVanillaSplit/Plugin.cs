@@ -11,7 +11,7 @@ using SOD.Common.Helpers.SyncDiskObjects;
 
 namespace SoDVanillaSplit;
 
-[BepInPlugin(GUID, "SoD Vanilla Split", "0.4.1")]
+[BepInPlugin(GUID, "SoD Vanilla Split", "0.4.2")]
 [BepInDependency("Venomaus.SOD.Common", BepInDependency.DependencyFlags.HardDependency)]
 public class Plugin : BasePlugin
 {
@@ -77,6 +77,7 @@ public class Plugin : BasePlugin
         }
 
         Harmony.CreateAndPatchAll(typeof(SplitPatch));
+        Harmony.CreateAndPatchAll(typeof(LootRemovePatch));
         L.LogInfo("=== SoDVanillaSplit phase 1 done, " + made + " of "
                 + Splits.All.Length + " registered ===");
     }
@@ -386,13 +387,36 @@ public static class SplitPatch
         Plugin.L.LogInfo("=== remove pass complete: " + tbRemoved + " from Toolbox, "
                        + menuRemoved + " across " + menusSeen + " menu presets ===");
     }
-
+}
 
 [HarmonyPatch(typeof(InteriorCreator), nameof(InteriorCreator.StartLoading))]
 public static class LootRemovePatch
 {
+    static bool _loggedFirstCall = false;
+
     static void Prefix()
     {
+        if (!_loggedFirstCall)
+        {
+            _loggedFirstCall = true;
+            int total = Toolbox.Instance?.allSyncDisks?.Count ?? 0;
+            int parentsPresent = 0;
+            var firstCallDisks = Toolbox.Instance?.allSyncDisks;
+            if (firstCallDisks != null)
+            {
+                foreach (var p in firstCallDisks)
+                {
+                    if (p == null) continue;
+                    foreach (var w in Splits.Parents)
+                    {
+                        if (p.name == w) { parentsPresent++; break; }
+                    }
+                }
+            }
+            Plugin.L.LogInfo("[LOOT] first call, allSyncDisks=" + total
+                           + ", parents present=" + parentsPresent);
+        }
+
         if (!Plugin.RemoveParents.Value) return;
 
         var all = Toolbox.Instance?.allSyncDisks;
@@ -413,5 +437,4 @@ public static class LootRemovePatch
             Plugin.L.LogInfo("=== LOOT PASS: removed " + removed
                            + " parents at chunk generation ===");
     }
-}
 }
