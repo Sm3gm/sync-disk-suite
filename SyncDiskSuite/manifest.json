@@ -1,8 +1,8 @@
 {
     "name": "SyncDiskSuite",
-    "version_number": "1.0.1",
+    "version_number": "1.1.0",
     "website_url": "https://github.com/sm3gm/sync-disk-suite",
-    "description": "Adds 12 new sync disks and splits 37 vanilla disk branches into standalone disks. Three tiers each, real trade-offs, and the only route to a full twelve-slot inventory.",
+    "description": "Run faster, jump higher and max out your inventory. Adds 12 new sync disks, splits 37 vanilla disk branches into standalone disks, rebalances them, and rotates shop stock.",
     "dependencies": [
       "Venomaus-SODCommon-2.1.4"
     ]

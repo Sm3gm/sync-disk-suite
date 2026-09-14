@@ -5,7 +5,7 @@ Three plugins for *Shadows of Doubt*, shipped together as one package.
 | Plugin | What it does |
 |---|---|
 | **Sync Disk Pack** | Adds 12 new sync disks, seven of them with full upgrade chains. |
-| **Vanilla Split** | Breaks 17 vanilla sync disks into 37 standalone single-purpose disks. |
+| **Vanilla Split** | Breaks 17 vanilla sync disks into 37 standalone single-purpose disks, and rebalances them. |
 | **Disk Availability** | Controls what vendors stock. Three modes: rotating daily stock, the vanilla lists as the game shipped them, or everything everywhere. |
 
 They are separate plugins with separate config files, and **each one can be disabled without touching the others**. If you only want the split disks, disable the other two. Nothing in the package depends on the rest of it.
@@ -32,6 +32,8 @@ To install by hand, drop the three plugin folders into `BepInEx/plugins`.
 **Sync disks are placed in the world when the city is generated.** Loading this package onto a city you have already been playing will get you the new disks in shop stock, but **you will never find them lying around in apartments, offices or lockups in that city.** For the full experience, start a new city.
 
 Existing saves are otherwise safe. Nothing here breaks a city you are already in.
+
+**As of 1.1 this package also retunes the vanilla disks it splits.** Payouts go up, empty upgrade chains get filled in, and upgrade tiers that never did anything are replaced with ones that do. If you want the splits without the retuning, **set `VanillaBalance` to `true`** in `ta.sod.vanillasplit.cfg` and every vanilla disk goes back to the numbers the game shipped with, prices included.
 
 If the suite earns a place in your load order, please leave a like on its [Thunderstore page](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/SyncDiskSuite/). It keeps me motivated to make more mods. Donations are welcome too:
 
@@ -76,11 +78,27 @@ How much that actually constrains you depends enormously on how you play. A conf
 
 Most vanilla sync disks make you choose. Tenacity offers Clout, Brawn or Reflexes, and once you install it, the other two branches are gone for good on that disk.
 
-This plugin turns each of those branches into its own disk. **Take Brawn without giving up Reflexes.** Buy Stability without giving up Power. The upgrade chains, effects and values all come from the vanilla disk itself, so a split disk behaves exactly as its branch always did. It simply no longer costs you the branches beside it.
+This plugin turns each of those branches into its own disk. **Take Brawn without giving up Reflexes.** Buy Stability without giving up Power. It no longer costs you the branches beside it.
 
 Seventeen vanilla disks split into **37 standalone disks**. `Starch-SugarDaddy` is untouched because it only has one branch.
 
 By default the original combined disks stay in the game alongside the splits. **Set `RemoveVanillaParents` to `true`** in the config to take them out of shop stock, which is the intended way to play. Otherwise clinics carry both the split and the combined version of everything.
+
+### What 1.1 changed
+
+Splitting a disk exposed how many vanilla disks were not worth owning in the first place.
+
+A 500 credit disk paying 10 crows every two hours takes four in-game days to break even, which is why nobody buys one. Several upgrade chains were worse than pointless: **nine splits arrived with completely empty upgrade lists**, and some tiers were built on effects that stop working the moment a disk is separated from its siblings.
+
+So 1.1 retunes them. **Earner payouts go up at every tier.** The nine splits with no upgrades now have full three-tier chains. The dead tiers are replaced with effects that function. Prices moved to match.
+
+Two changes are worth knowing before you buy. **Stability's four upgrade steps now sum to exactly the total fall immunity vanilla gave you for free**, so the disk only reaches the parent's protection once fully upgraded. **Power is the same shape**, reaching one-attempt door barging at tier 3 rather than at install. Both splits ask you to earn what the combined disk handed over on day one.
+
+**The Constitution pair got the largest change.** Vanilla stacked all three status immunities onto Chemistry and gave Cardiovascular three identical inventory slots. Chemistry now reads as a constitution disk, with reduced incoming damage, more health, and cold immunity at the top. Cardiovascular keeps its slots and gains tiredness immunity. Smell immunity moved to Street Cleaner.
+
+If you would rather have none of this, **`VanillaBalance` set to `true`** skips the entire pass and restores the original numbers and prices.
+
+**Existing saves are safe either way.** One piece of cosmetic drift is worth flagging: the game records purchased upgrade tiers by position rather than by name, so a player who already upgraded Chemistry keeps the old upgrade text while receiving the new effect. The effect is correct, the description is stale, and reinstalling the disk clears it.
 
 ### The 37 disks
 
@@ -97,32 +115,32 @@ By default the original combined disks stay in the game alongside the splits. **
 | | Cardiovascular | 2000 |
 | **ElGen-Beauty** | Allure | 1500 |
 | | Charm | 1500 |
-| **ElGen-Frame** | Statuesque | 750 |
-| | Compact | 750 |
+| **ElGen-Frame** | Statuesque | 600 |
+| | Compact | 900 |
 | **BlackMarket-Trespasser** | Lockpicker | 1750 |
 | | Resourceful | 1750 |
-| | Invisible | 1250 |
+| | Invisible | 1750 |
 | **BlackMarket-Infiltrator** | Rogue | 1750 |
 | | Hacker | 1750 |
-| **BlackMarket-Interceptor** | Mailing List | 500 |
-| | Safecacker | 500 |
+| **BlackMarket-Interceptor** | Mailing List | 650 |
+| | Safecacker | 750 |
 | **Kensington-SpartanInsuranceSchemes** | Gold Medical Cover | 1000 |
 | | Gold Legal Cover | 1250 |
 | | Gold Accident Cover | 750 |
-| **Kensington-AmbassadorScheme** | Cash Flow | 500 |
-| | Competitor Data Mining | 500 |
+| **Kensington-AmbassadorScheme** | Cash Flow | 600 |
+| | Competitor Data Mining | 550 |
 | **Kaizen-DovePlus** | Physiological Perception | 1750 |
 | | Socioeconomic Perception | 1000 |
-| **Candor-ModelCitizen** | Street Cleaner | 500 |
-| | Bookworm | 500 |
+| **Candor-ModelCitizen** | Street Cleaner | 450 |
+| | Bookworm | 600 |
 | **Candor-PublicService** | Food Hygeine Inspector | 500 |
 | | Sanitary Hygeine Inspector | 500 |
-| **Candor-Cartographer** | Urbex Cartographer | 500 |
-| | Crawlspace Engineer | 500 |
-| **Candor-Community** | Care in the Community | 750 |
+| **Candor-Cartographer** | Urbex Cartographer | 550 |
+| | Crawlspace Engineer | 700 |
+| **Candor-Community** | Care in the Community | 800 |
 | | Heavy Lifter | 1500 |
-| **Starch-BrandAmbassador** | Spread the word! | 500 |
-| | Put some life into it! | 500 |
+| **Starch-BrandAmbassador** | Spread the word! | 100 |
+| | Put some life into it! | 100 |
 
 *(The spelling of "Hygeine" and "Safecacker" is the game's, preserved deliberately.)*
 
@@ -130,7 +148,9 @@ By default the original combined disks stay in the game alongside the splits. **
 
 A split disk does **not** inherit a share of its parent's price. Splitting decouples the branches, so the pricing decouples too. Power and Stability come from the same vanilla disk and are nothing alike, and they are not priced alike.
 
-Broadly, the twelve disks at 500 credits all earn money back, so they are self-funding and self-limiting. The expensive end is where the disks that meaningfully change how you play sit. Stability at 3000, which cures fall damage, is priced deliberately close to Leap at 3500, which causes it.
+Broadly, the cheap end of the list is where the earners sit, so those disks are self-funding and self-limiting. The two Starch disks are down at 100 because vanilla sells the parent for 5, and charging 500 for half of it was never defensible. The expensive end is where the disks that meaningfully change how you play sit. Stability at 3000, which cures fall damage, is priced deliberately close to Leap at 3500, which causes it.
+
+**Statuesque and Compact used to be priced identically** because they mirror each other. They no longer are, because mirrored effects are not equally useful.
 
 Every one of the 37 prices is a separate config entry, listed under its parent disk's name.
 
@@ -181,15 +201,15 @@ Six independently configurable pools. Each has `Enabled`, `DisksInStock`, `Extra
 
 **Combined vanilla disks can still turn up as loot even with `RemoveVanillaParents` enabled.** The setting reliably removes them from shop stock, but container loot is filled from somewhere else entirely, so a combined parent will occasionally appear in an apartment. It works normally if you install it. Cosmetic, and there is no fix from this end.
 
-**Street Cleaner and Bookworm lose their third tier when split.** In vanilla, that tier upgrades *both* branches at once. A split disk has no sibling branch to upgrade, so the tier does nothing. Harmless, and it only affects those two.
-
-**Do not install both perception splits at once.** Physiological Perception and Socioeconomic Perception both come from Dove Plus, and each inherits the dialogue penalty the parent carries. Vanilla only ever lets you hold one, so installing both doubles it and shopkeepers around the city may start demanding a password from you. Uninstalling one of them restores normal service straight away.
+**Installing both perception splits doubles a dialogue penalty.** Physiological Perception and Socioeconomic Perception both come from Dove Plus, and each inherits the dialogue penalty the parent carries. Vanilla only ever lets you hold one, so holding both doubles it and shopkeepers around the city may start demanding a password from you. **As of 1.1 the third upgrade tier on each disk grants a dialogue bonus that counters this**, so a fully upgraded pair is fine. Until then, run one, or uninstall one to restore normal service straight away.
 
 **The Black Market Trader and the Weapons Dealer only let you in with a password.** The game shows it only in graffiti tags around town, and a tag is sometimes blank. The trader's rotation works normally once you are in. If the password is the problem, my separate mod [Black Market Passwords](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/BlackMarketPasswords/) writes the current passwords into a sticky note.
 
 **The availability rotation includes sync disks added by other mods.** If another mod registers a disk, it joins the pool and will be distributed like any other. There is currently no switch to exclude them.
 
 **The rotation is not weighted by rarity.** A very rare disk is currently as likely to appear in a shop as a common one.
+
+**Vitality and Heavy Lifter were left out of the 1.1 rebalance.** Both grant whole inventory slots with no smaller step available, and nothing unclaimed fits them as an upgrade. This is a known gap rather than an oversight.
 
 **The vendor duplication fix lives in the Disk Availability plugin.** If you disable that plugin and load more than one city in the same play session, vendor stock lists can accumulate duplicate entries. Restarting the game clears it.
 
@@ -204,6 +224,8 @@ A few interactions are worth knowing about rather than discovering.
 **Iron Lung's gait compensation dilutes when stacked.** Its third tier is tuned to cancel out its own heavy gait exactly. If you are already running Quickstep and Sprinter's Curse, it recovers slightly less than the full amount. The shortfall is a few percent and imperceptible in play.
 
 **Long Arm's reach tier stacks with its own main effect, and with Tenacity's Brawn branch.** Run both and you will be picking things up from across the room.
+
+**Leap and Stability are the obvious pairing.** Leap raises your fall damage with every tier and Stability lowers it, so running both lets you take the height without the landings.
 
 **Second Wind is slow and cumulative by design.** Recovery rates, energy drain and bruise chance are not things you feel in a moment. You notice it after an hour of play rather than after a fight.
 
@@ -233,7 +255,7 @@ Each plugin writes its own file to `BepInEx/config`:
 | Vanilla Split | `ta.sod.vanillasplit.cfg` |
 | Disk Availability | `ta.sod.diskavailability.cfg` |
 
-Every disk in the pack can be individually disabled, repriced and retuned. Every split disk can be individually disabled and repriced. Every vendor pool can be resized, restricted or switched off.
+Every disk in the pack can be individually disabled, repriced and retuned. Every split disk can be individually disabled and repriced. Every vendor pool can be resized, restricted or switched off. **`VanillaBalance` reverts the 1.1 rebalance in full.**
 
 **Edit configs with the game closed.** BepInEx rewrites them on shutdown, so changes made while the game is running are discarded.
 
@@ -252,6 +274,8 @@ Built on **SOD.Common** by Venomaus, without which none of this exists.
 ## Also by sm3gm
 
 [Black Market Passwords](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/BlackMarketPasswords/): press F8 in a sticky note to write the current passwords for the black market trader and weapons dealer into it.
+
+[Sync Disk Labels](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/SyncDiskLabels/): inventory squares show the real sync disk name instead of the generic SyncDisk label. Works with vanilla disks, split disks and disks from other mods.
 
 ---
 

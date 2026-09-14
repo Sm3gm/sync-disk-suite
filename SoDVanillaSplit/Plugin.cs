@@ -11,7 +11,7 @@ using SOD.Common.Helpers.SyncDiskObjects;
 
 namespace SoDVanillaSplit;
 
-[BepInPlugin(GUID, "SoD Vanilla Split", "0.4.2")]
+[BepInPlugin(GUID, "SoD Vanilla Split", "0.5.0")]
 [BepInDependency("Venomaus.SOD.Common", BepInDependency.DependencyFlags.HardDependency)]
 public class Plugin : BasePlugin
 {
@@ -21,6 +21,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<bool> RemoveParents;
     internal static ConfigEntry<bool> ClearParentSpawnData;
     internal static ConfigEntry<string> SaleLocation;
+    internal static ConfigEntry<bool> VanillaBalance;
 
     // Registered presets, keyed by DiskName, handed to phase 2.
     internal static readonly Dictionary<string, SyncDiskPreset> Made = new();
@@ -31,10 +32,15 @@ public class Plugin : BasePlugin
     // the parent - a set of splits deliberately costs more than the parent.
     internal static readonly Dictionary<string, int> Prices = new();
 
+    // Rebalance.Table rows keyed by disk name, built once in Load(). Used to
+    // pick the config default price and, when VanillaBalance is on, the
+    // vanilla price directly (see Copy() in SplitPatch).
+    internal static readonly Dictionary<string, Rebalance.Row> RebalanceByDisk = new();
+
     public override void Load()
     {
         L = Log;
-        L.LogInfo("=== SoDVanillaSplit 0.4.0 starting ===");
+        L.LogInfo("=== SoDVanillaSplit 0.5.0 starting ===");
 
         RemoveParents = Config.Bind("General", "RemoveVanillaParents", false,
             "Remove the 17 split parent presets from Toolbox.allSyncDisks so only the "
@@ -50,7 +56,13 @@ public class Plugin : BasePlugin
         SaleLocation = Config.Bind("General", "SaleLocation", "SyncClinic",
             "Menu preset the split disks are added to. Blank for none.");
 
+        VanillaBalance = Config.Bind("General", "VanillaBalance", false,
+            "Revert every rebalanced payout, tier and price to the vanilla values shipped in 1.0.3. "
+          + "When true, the per-disk price keys below are ignored in favour of the original prices.");
+
         string loc = SaleLocation.Value == null ? "" : SaleLocation.Value.Trim();
+
+        foreach (var r in Rebalance.Table) RebalanceByDisk[r.Disk] = r;
 
         int made = 0;
         foreach (var d in Splits.All)
@@ -59,7 +71,10 @@ public class Plugin : BasePlugin
                 "Register this split disk.").Value;
             if (!on) { L.LogInfo("skipped: " + d.DiskName); continue; }
 
-            Prices[d.DiskName] = Config.Bind(d.Parent, d.DiskName + " price", d.Price,
+            int priceDefault = RebalanceByDisk.TryGetValue(d.DiskName, out var row)
+                              ? row.NewPrice : d.Price;
+
+            Prices[d.DiskName] = Config.Bind(d.Parent, d.DiskName + " price", priceDefault,
                 "Credits. Split disks are priced for what the branch does, not "
               + "what the parent cost, so a set of splits costs more in total "
               + "than the disk they came from. Price is not a save key and can "
@@ -120,6 +135,27 @@ public class Plugin : BasePlugin
         L.LogInfo("shell registered: " + d.DiskName + " <- " + d.Parent
                 + " branch " + d.Branch + " tiers " + d.Tiers + " customId " + effId);
     }
+
+    // 0.4.4. An upgrade name reference is a KEY into the evidence.syncdisks DDS
+    // table. SOD.Common registers keys before Toolbox.Start, so any key authored
+    // in phase 2 must be registered here or it renders as a generic label.
+    // The setter UPDATES existing keys, so never call this on a vanilla key.
+    internal static int DdsRegistered = 0;
+    internal static int DdsThrew = 0;
+
+    internal static void RegisterUpgradeString(string s)
+    {
+        try
+        {
+            Lib.DdsStrings["evidence.syncdisks", s] = s;
+            DdsRegistered++;
+        }
+        catch (System.Exception e)
+        {
+            DdsThrew++;
+            L.LogWarning("[DDSREG] " + e.GetType().Name + " registering \"" + s + "\"");
+        }
+    }
 }
 
 [HarmonyPatch(typeof(Toolbox), nameof(Toolbox.Start))]
@@ -134,6 +170,7 @@ public static class SplitPatch
 
         var parents = Index();
         Copy(parents);
+        Rebalance.Apply(Plugin.Made);
         Remove(parents);
     }
 
@@ -182,9 +219,18 @@ public static class SplitPatch
 
             // Shared preset-level data. Price is the ONE field deliberately not
             // copied from the parent - see SplitDef.Price and the config keys.
-            int cfgPrice;
-            dst.price = Plugin.Prices.TryGetValue(d.DiskName, out cfgPrice)
-                      ? cfgPrice : src.price;
+            // VanillaBalance ignores the bound config value entirely where a
+            // Rebalance.Row exists and uses its VanillaPrice instead.
+            if (Plugin.VanillaBalance.Value && Plugin.RebalanceByDisk.TryGetValue(d.DiskName, out var vrow))
+            {
+                dst.price = vrow.VanillaPrice;
+            }
+            else
+            {
+                int cfgPrice;
+                dst.price = Plugin.Prices.TryGetValue(d.DiskName, out cfgPrice)
+                          ? cfgPrice : src.price;
+            }
             dst.rarity = src.rarity;
             dst.manufacturer = src.manufacturer;
             dst.uninstallCost = src.uninstallCost;
