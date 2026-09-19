@@ -294,12 +294,19 @@ internal static class Stock
         }
     }
  
-    // Custom disks are named {id}_{hash}_{bool}_{Name}. Log only the readable part.
+    // SOD.Common names are {id}_{hash}_{True|False}_{Name}. Take everything
+    // after the bool token so a name with extra underscores stays intact.
+    // LastIndexOf('_') keeps only the last word if Name contains underscores.
     static string Short(string n)
     {
         if (string.IsNullOrEmpty(n)) return "?";
-        int i = n.LastIndexOf('_');
-        return i >= 0 && i < n.Length - 1 ? n.Substring(i + 1) : n;
+        const string trueTok = "_True_";
+        const string falseTok = "_False_";
+        int t = n.IndexOf(trueTok, StringComparison.Ordinal);
+        if (t >= 0) return n.Substring(t + trueTok.Length);
+        int f = n.IndexOf(falseTok, StringComparison.Ordinal);
+        if (f >= 0) return n.Substring(f + falseTok.Length);
+        return n;
     }
  
     static void WriteList(MenuPreset m, List<SyncDiskPreset> items)
