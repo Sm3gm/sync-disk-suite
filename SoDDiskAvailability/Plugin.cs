@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Unity.IL2CPP;
@@ -17,6 +18,7 @@ public class Plugin : BasePlugin
     public const string VER = "0.3.1";
  
     internal static BepInEx.Logging.ManualLogSource L;
+    internal static ConfigFile Cfg;
  
     internal static ConfigEntry<string> Mode;
     internal static ConfigEntry<int> Salt;
@@ -31,21 +33,22 @@ public class Plugin : BasePlugin
     {
         L = Log;
         L.LogInfo("=== SoD Disk Availability " + VER + " starting ===");
+        Cfg = OpenSettings("sm3gm.sod.diskavailability.cfg");
  
-        Mode = Config.Bind("General", "Mode", "Rotation",
+        Mode = Cfg.Bind("General", "Mode", "Rotation",
             "Unrestricted = every disk stocked everywhere, always. "
           + "Vanilla = restore the stock lists as the game shipped them. "
           + "Rotation = each vendor stocks a small set that changes daily.");
  
-        Salt = Config.Bind("General", "RotationSalt", 0,
+        Salt = Cfg.Bind("General", "RotationSalt", 0,
             "Change this number to get a different rotation sequence. "
           + "Rotation is derived from the in-game day plus this salt, so the same "
           + "day always produces the same stock and reloading never rerolls it.");
  
-                LogStock = Config.Bind("General", "LogStockToConsole", true,
+                LogStock = Cfg.Bind("General", "LogStockToConsole", true,
             "Write the chosen stock to the BepInEx log on every rotation.");
 
-        DedupeMenus = Config.Bind("General", "FixVendorDuplicates", true,
+        DedupeMenus = Cfg.Bind("General", "FixVendorDuplicates", true,
             "Removes duplicate sync disk entries that build up in vendor stock lists "
           + "when a city is loaded more than once in the same session. Works around a "
           + "known issue in SOD.Common 2.1.4. Leave this on unless it conflicts with another mod.");
@@ -54,7 +57,7 @@ public class Plugin : BasePlugin
         // the daily rotation and taking a clinic slot. The rotation is for
         // vanilla plus this suite. Turn this on to put other mods' disks back
         // in the pool.
-        IncludeOtherMods = Config.Bind("General", "IncludeDisksFromOtherMods", false,
+        IncludeOtherMods = Cfg.Bind("General", "IncludeDisksFromOtherMods", false,
             "When false, Rotation and Unrestricted ignore sync disks registered by "
           + "other mods (for example LifeAndLiving Echolocation). Vanilla disks and "
           + "this suite's pack and split disks stay in the pool. Default false "
@@ -87,19 +90,32 @@ public class Plugin : BasePlugin
         L.LogInfo("=== SoD Disk Availability ready, mode=" + Mode.Value + " ===");
     }
  
+
+    static ConfigFile OpenSettings(string newFileName)
+    {
+        string dest = Path.Combine(Paths.ConfigPath, newFileName);
+        string src = Path.Combine(Paths.ConfigPath, GUID + ".cfg");
+        if (File.Exists(src) && !File.Exists(dest))
+        {
+            File.Copy(src, dest);
+            L.LogInfo("Copied settings from " + GUID + ".cfg to " + newFileName);
+        }
+        return new ConfigFile(dest, true);
+    }
+
     void Add(string preset, string section, int count, int slots, string blurb)
     {
         var p = new Pool
         {
             Preset = preset,
-            Enabled = Config.Bind(section, "Enabled", true,
+            Enabled = Cfg.Bind(section, "Enabled", true,
                 blurb + " Set false to leave this vendor exactly as the game left it."),
-            Count = Config.Bind(section, "DisksInStock", count,
+            Count = Cfg.Bind(section, "DisksInStock", count,
                 "How many disks this vendor offers at once in Rotation mode. 0 for none."),
-            Slots = Config.Bind(section, "ExtraRandomSlots", slots,
+            Slots = Cfg.Bind(section, "ExtraRandomSlots", slots,
                 "Additional disks the game draws at random on top of the list above, "
               + "filtered by the manufacturers below. Vanilla uses 1 for sync clinics."),
-            Manufacturers = Config.Bind(section, "RestrictToManufacturers", "",
+            Manufacturers = Cfg.Bind(section, "RestrictToManufacturers", "",
                 "Comma separated. Blank means draw from every disk in the game. "
               + "Valid names: ElGen, Kaizen, KensingtonIndigo, StarchKola, CandorNews, BlackMarket.")
         };
