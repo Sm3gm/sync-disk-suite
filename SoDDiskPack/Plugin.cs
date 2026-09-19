@@ -226,11 +226,17 @@ public class Plugin : BasePlugin
     static ConfigFile OpenSettings(string newFileName)
     {
         string dest = Path.Combine(Paths.ConfigPath, newFileName);
-        string src = Path.Combine(Paths.ConfigPath, GUID + ".cfg");
-        if (File.Exists(src) && !File.Exists(dest))
+        try
         {
-            File.Copy(src, dest);
-            L.LogInfo("Copied settings from " + GUID + ".cfg to " + newFileName);
+            string src = Path.Combine(Paths.ConfigPath, GUID + ".cfg");
+            if (File.Exists(src) && !File.Exists(dest))
+            {
+                File.Copy(src, dest);
+                L.LogInfo("Copied settings from " + GUID + ".cfg to " + newFileName);
+            }
+        }
+        catch (System.Exception)
+        {
         }
         return new ConfigFile(dest, true);
     }
