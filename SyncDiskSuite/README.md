@@ -205,7 +205,7 @@ Six independently configurable pools. Each has `Enabled`, `DisksInStock`, `Extra
 
 **The Black Market Trader and the Weapons Dealer only let you in with a password.** The game shows it only in graffiti tags around town, and a tag is sometimes blank. The trader's rotation works normally once you are in. If the password is the problem, my separate mod [Black Market Passwords](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/BlackMarketPasswords/) writes the current passwords into a sticky note.
 
-**The availability rotation includes sync disks added by other mods.** If another mod registers a disk, it joins the pool and will be distributed like any other. There is currently no switch to exclude them.
+**The availability rotation ignores sync disks added by other mods by default.** LifeAndLiving's Echolocation disk was taking clinic slots. Set `IncludeDisksFromOtherMods` to `true` in `ta.sod.diskavailability.cfg` to put those disks back in the pool.
 
 **The rotation is not weighted by rarity.** A very rare disk is currently as likely to appear in a shop as a common one.
 
@@ -241,7 +241,7 @@ A few interactions are worth knowing about rather than discovering.
 
 **Vanilla side-job rewards do include pack disks.** The game's own reward system will hand you one.
 
-**Other sync disk mods** should coexist. Their disks will be swept into the availability rotation alongside everything else.
+**Other sync disk mods** should coexist. Their disks stay out of the availability rotation unless you set `IncludeDisksFromOtherMods` to `true`.
 
 ---
 

@@ -22,6 +22,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<int> Salt;
     internal static ConfigEntry<bool> LogStock;
         public static ConfigEntry<bool> DedupeMenus;
+    internal static ConfigEntry<bool> IncludeOtherMods;
  
     // One block of keys per vendor pool.
     internal static readonly List<Pool> Pools = new();
@@ -48,6 +49,16 @@ public class Plugin : BasePlugin
             "Removes duplicate sync disk entries that build up in vendor stock lists "
           + "when a city is loaded more than once in the same session. Works around a "
           + "known issue in SOD.Common 2.1.4. Leave this on unless it conflicts with another mod.");
+
+        // Default false: LifeAndLiving's Echolocation disk was being drawn into
+        // the daily rotation and taking a clinic slot. The rotation is for
+        // vanilla plus this suite. Turn this on to put other mods' disks back
+        // in the pool.
+        IncludeOtherMods = Config.Bind("General", "IncludeDisksFromOtherMods", false,
+            "When false, Rotation and Unrestricted ignore sync disks registered by "
+          + "other mods (for example LifeAndLiving Echolocation). Vanilla disks and "
+          + "this suite's pack and split disks stay in the pool. Default false "
+          + "because those extra disks were taking rotation slots unintentionally.");
 
         DedupePatch.Enabled = DedupeMenus.Value;
         DedupePatch.Log = L;
@@ -183,13 +194,25 @@ internal static class Stock
             return;
         }
  
+        int skippedOther = 0;
+        var skippedNames = new System.Text.StringBuilder();
         for (int i = 0; i < all.Count; i++)
         {
             var p = all[i];
             if (p == null) continue;
             if (p.disabled) continue;
+            if (!Plugin.IncludeOtherMods.Value && IsOtherModDisk(p))
+            {
+                skippedOther++;
+                if (skippedNames.Length > 0) skippedNames.Append(", ");
+                skippedNames.Append(Short(p.name));
+                continue;
+            }
             MasterPool.Add(p);
         }
+        if (skippedOther > 0)
+            Plugin.L.LogInfo("[STOCK] excluded " + skippedOther
+                           + " disk(s) from other mods: " + skippedNames);
  
         var menus = Resources.FindObjectsOfTypeAll<MenuPreset>();
         if (menus != null)
@@ -307,6 +330,38 @@ internal static class Stock
         int f = n.IndexOf(falseTok, StringComparison.Ordinal);
         if (f >= 0) return n.Substring(f + falseTok.Length);
         return n;
+    }
+
+    // SOD.Common custom disks share one {id}_{hash}_{bool}_{Name} shape, so
+    // plugin GUID is not in the preset name. Treat custom names outside the
+    // suite allowlist as other-mod disks (LifeAndLiving Echolocation).
+    static readonly HashSet<string> SuiteNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "Quickstep", "Low Profile", "Squatter's Rights", "Homebound", "Signpost",
+        "Persona Non Grata", "Free Rein", "Deep Pockets", "Sprinter's Curse",
+        "Iron Lung", "Leap", "Dead Air", "Plus One", "Muckraker", "Blank Face",
+        "Company Man", "Second Wind", "Long Arm", "Lights Out",
+        "Clout", "Brawn", "Reflexes", "Lockpicker", "Resourceful", "Invisible",
+        "Gold Medical Cover", "Gold Legal Cover", "Gold Accident Cover",
+        "Street Cleaner", "Bookworm", "Power", "Stability",
+        "Physiological Perception", "Socioeconomic Perception",
+        "Food Hygeine Inspector", "Sanitary Hygeine Inspector",
+        "Rogue", "Hacker", "Cash Flow", "Competitor Data Mining",
+        "Fortitude", "Vitality", "Allure", "Charm", "Chemistry", "Cardiovascular",
+        "Spread the word!", "Put some life into it!",
+        "Urbex Cartographer", "Crawlspace Engineer",
+        "Care in the Community", "Heavy Lifter", "Statuesque", "Compact",
+        "Mailing List", "Safecacker"
+    };
+
+    static bool IsOtherModDisk(SyncDiskPreset p)
+    {
+        if (p == null || string.IsNullOrEmpty(p.name)) return false;
+        string n = p.name;
+        if (n.IndexOf("_True_", StringComparison.Ordinal) < 0
+            && n.IndexOf("_False_", StringComparison.Ordinal) < 0)
+            return false;
+        return !SuiteNames.Contains(Short(n));
     }
  
     static void WriteList(MenuPreset m, List<SyncDiskPreset> items)
