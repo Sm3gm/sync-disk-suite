@@ -33,7 +33,7 @@ To install by hand, drop the three plugin folders into `BepInEx/plugins`.
 
 Existing saves are otherwise safe. Nothing here breaks a city you are already in.
 
-**As of 1.1 this package also retunes the vanilla disks it splits.** Payouts go up, empty upgrade chains get filled in, and upgrade tiers that never did anything are replaced with ones that do. If you want the splits without the retuning, **set `VanillaBalance` to `true`** in `ta.sod.vanillasplit.cfg` and every vanilla disk goes back to the numbers the game shipped with, prices included.
+**As of 1.1 this package also retunes the vanilla disks it splits.** Payouts go up, empty upgrade chains get filled in, and upgrade tiers that never did anything are replaced with ones that do. If you want the splits without the retuning, **set `VanillaBalance` to `true`** in `sm3gm.sod.vanillasplit.cfg` and every vanilla disk goes back to the numbers the game shipped with, prices included.
 
 If the suite earns a place in your load order, please leave a like on its [Thunderstore page](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/SyncDiskSuite/). It keeps me motivated to make more mods. Donations are welcome too:
 
@@ -205,7 +205,7 @@ Six independently configurable pools. Each has `Enabled`, `DisksInStock`, `Extra
 
 **The Black Market Trader and the Weapons Dealer only let you in with a password.** The game shows it only in graffiti tags around town, and a tag is sometimes blank. The trader's rotation works normally once you are in. If the password is the problem, my separate mod [Black Market Passwords](https://thunderstore.io/c/shadows-of-doubt/p/Sm3gm/BlackMarketPasswords/) writes the current passwords into a sticky note.
 
-**The availability rotation ignores sync disks added by other mods by default.** LifeAndLiving's Echolocation disk was taking clinic slots. Set `IncludeDisksFromOtherMods` to `true` in `ta.sod.diskavailability.cfg` to put those disks back in the pool.
+**The availability rotation ignores sync disks added by other mods by default.** LifeAndLiving's Echolocation disk was taking clinic slots. Set `IncludeDisksFromOtherMods` to `true` in `sm3gm.sod.diskavailability.cfg` to put those disks back in the pool.
 
 **The rotation is not weighted by rarity.** A very rare disk is currently as likely to appear in a shop as a common one.
 
@@ -251,9 +251,9 @@ Each plugin writes its own file to `BepInEx/config`:
 
 | Plugin | Config file |
 |---|---|
-| Sync Disk Pack | `ta.sod.syncdiskpack.cfg` |
-| Vanilla Split | `ta.sod.vanillasplit.cfg` |
-| Disk Availability | `ta.sod.diskavailability.cfg` |
+| Sync Disk Pack | `sm3gm.sod.syncdiskpack.cfg` |
+| Vanilla Split | `sm3gm.sod.vanillasplit.cfg` |
+| Disk Availability | `sm3gm.sod.diskavailability.cfg` |
 
 Every disk in the pack can be individually disabled, repriced and retuned. Every split disk can be individually disabled and repriced. Every vendor pool can be resized, restricted or switched off. **`VanillaBalance` reverts the 1.1 rebalance in full.**
 
