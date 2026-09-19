@@ -1,5 +1,6 @@
 using E = SyncDiskPreset.Effect;
 using System.Collections.Generic;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Unity.IL2CPP;
@@ -17,6 +18,7 @@ public class Plugin : BasePlugin
     public const string GUID = "ta.sod.syncdiskpack";
         public const string VER = "0.12.1";
     internal static BepInEx.Logging.ManualLogSource L;
+    internal static ConfigFile Cfg;
     internal static ConfigEntry<string> DisableList;
     internal static ConfigEntry<string> RemoveList;
 
@@ -79,52 +81,53 @@ public class Plugin : BasePlugin
     {
         L = Log;
         L.LogInfo("=== SoDDiskPack " + VER + " starting ===");
+        Cfg = OpenSettings("sm3gm.sod.syncdiskpack.cfg");
 
-        DisableList = Config.Bind("_Experimental", "DisableVanillaDisks", "",
+        DisableList = Cfg.Bind("_Experimental", "DisableVanillaDisks", "",
             "TEST ONLY. Comma-separated vanilla preset names to set disabled=true. "
           + "Leave empty to change nothing.");
 
-        RemoveList = Config.Bind("_Experimental", "RemoveVanillaDisks", "",
+        RemoveList = Cfg.Bind("_Experimental", "RemoveVanillaDisks", "",
             "TEST ONLY. Comma-separated vanilla preset names to REMOVE from "
           + "Toolbox.allSyncDisks and from every MenuPreset stock list. "
           + "Suppresses VENDOR stock only; world loot in an existing city is "
           + "unaffected. Throwaway saves only. Leave empty.");
 
-        QsTier1 = Config.Bind("Quickstep", "Tier1RunSpeedFraction", 0.05f,
+        QsTier1 = Cfg.Bind("Quickstep", "Tier1RunSpeedFraction", 0.05f,
             "Quickstep tier 1. Fraction added to base playerRunSpeed. Cumulative.");
-        QsTier2 = Config.Bind("Quickstep", "Tier2RunSpeedFraction", 0.05f,
+        QsTier2 = Cfg.Bind("Quickstep", "Tier2RunSpeedFraction", 0.05f,
             "Quickstep tier 2. Fraction added to base playerRunSpeed. Cumulative.");
-        QsTier3 = Config.Bind("Quickstep", "Tier3RunSpeedFraction", 0.10f,
+        QsTier3 = Cfg.Bind("Quickstep", "Tier3RunSpeedFraction", 0.10f,
             "Quickstep tier 3. Fraction added to base playerRunSpeed. Cumulative.");
 
-        LeapJump0 = Config.Bind("Leap", "JumpHeightInstalled", 6.0f,
+        LeapJump0 = Cfg.Bind("Leap", "JumpHeightInstalled", 6.0f,
             "GameplayControls.jumpHeight while Leap is installed, unupgraded. "
           + "Game baseline is 4.5. Absolute value, not a fraction.");
-        LeapJump1 = Config.Bind("Leap", "JumpHeightTier1", 7.0f, "jumpHeight at tier 1. Absolute.");
-        LeapJump2 = Config.Bind("Leap", "JumpHeightTier2", 8.0f, "jumpHeight at tier 2. Absolute.");
-        LeapJump3 = Config.Bind("Leap", "JumpHeightTier3", 9.0f,
+        LeapJump1 = Cfg.Bind("Leap", "JumpHeightTier1", 7.0f, "jumpHeight at tier 1. Absolute.");
+        LeapJump2 = Cfg.Bind("Leap", "JumpHeightTier2", 8.0f, "jumpHeight at tier 2. Absolute.");
+        LeapJump3 = Cfg.Bind("Leap", "JumpHeightTier3", 9.0f,
             "jumpHeight at tier 3. Absolute. 9.0 was play-tested as a good ceiling.");
 
-        LeapFall0 = Config.Bind("Leap", "FallDamageInstalled", 1.0f,
+        LeapFall0 = Cfg.Bind("Leap", "FallDamageInstalled", 1.0f,
             "fallDamageMultiplier while Leap is installed. Game baseline is 0.85. "
           + "This is Leap's cost. The cure is the Stability split disk, not a tier.");
-        LeapFall1 = Config.Bind("Leap", "FallDamageTier1", 1.1f, "fallDamageMultiplier at tier 1.");
-        LeapFall2 = Config.Bind("Leap", "FallDamageTier2", 1.2f, "fallDamageMultiplier at tier 2.");
-        LeapFall3 = Config.Bind("Leap", "FallDamageTier3", 1.3f, "fallDamageMultiplier at tier 3.");
+        LeapFall1 = Cfg.Bind("Leap", "FallDamageTier1", 1.1f, "fallDamageMultiplier at tier 1.");
+        LeapFall2 = Cfg.Bind("Leap", "FallDamageTier2", 1.2f, "fallDamageMultiplier at tier 2.");
+        LeapFall3 = Cfg.Bind("Leap", "FallDamageTier3", 1.3f, "fallDamageMultiplier at tier 3.");
 
-        IlTiredness = Config.Bind("IronLung", "Tier1TirednessFraction", -0.30f,
+        IlTiredness = Cfg.Bind("IronLung", "Tier1TirednessFraction", -0.30f,
             "Iron Lung tier 1. Fraction applied to base playerTirednessRate (0.06). "
           + "Negative tires you more slowly. Deliberately ASYMMETRIC against "
           + "Sprinter's Curse tier 1 (+0.25): if the two were equal and opposite "
           + "a player running both disks would see an upgrade do literally nothing.");
-        IlRecovery = Config.Bind("IronLung", "Tier2RecoveryFraction", 0.25f,
+        IlRecovery = Cfg.Bind("IronLung", "Tier2RecoveryFraction", 0.25f,
             "Iron Lung tier 2. Fraction applied to base playerRecoveryRate (0.225). "
           + "Positive heals faster. SUMMED with Second Wind tier 1 if both installed.");
-        IlHunger = Config.Bind("IronLung", "Tier3HungerFraction", -0.20f,
+        IlHunger = Cfg.Bind("IronLung", "Tier3HungerFraction", -0.20f,
             "Iron Lung tier 3. Fraction applied to base playerHungerRate (0.125).");
-        IlThirst = Config.Bind("IronLung", "Tier3ThirstFraction", -0.20f,
+        IlThirst = Cfg.Bind("IronLung", "Tier3ThirstFraction", -0.20f,
             "Iron Lung tier 3. Fraction applied to base playerThirstRate (0.15).");
-        IlGaitCure = Config.Bind("IronLung", "Tier3GaitCureFraction", 0.25f,
+        IlGaitCure = Cfg.Bind("IronLung", "Tier3GaitCureFraction", 0.25f,
             "Iron Lung tier 3 compensates for the Heavy Gait side effect. The enum "
           + "gives maxSpeedModifier -0.2 (x0.8); this writes playerRunSpeed +25% on "
           + "top. The two compose multiplicatively, so in ISOLATION 0.8 x 1.25 "
@@ -133,58 +136,58 @@ public class Plugin : BasePlugin
           + "DILUTED when Quickstep or Sprinter's Curse are also installed - "
           + "roughly 5% short with both at tier 3. This is expected behaviour.");
 
-        ScSpeedPerTier = Config.Bind("SprintersCurse", "SpeedFractionPerTier", 0.08f,
+        ScSpeedPerTier = Cfg.Bind("SprintersCurse", "SpeedFractionPerTier", 0.08f,
             "Sprinter's Curse. Fraction added to base playerRunSpeed per tier. Cumulative.");
-        ScTiredness = Config.Bind("SprintersCurse", "Tier1TirednessFraction", 0.25f,
+        ScTiredness = Cfg.Bind("SprintersCurse", "Tier1TirednessFraction", 0.25f,
             "Sprinter's Curse tier 1 cost. Fraction applied to base playerTirednessRate. "
           + "Positive tires you faster. See IronLung Tier1TirednessFraction for why "
           + "these two are not equal and opposite.");
-        ScBleeding = Config.Bind("SprintersCurse", "Tier2BleedingFraction", 0.50f,
+        ScBleeding = Cfg.Bind("SprintersCurse", "Tier2BleedingFraction", 0.50f,
             "Sprinter's Curse tier 2 cost. Fraction applied to base "
           + "combatHitChanceOfBleeding (0.1). combatHitChanceOfBrokenLeg was "
           + "rejected for this: at a 0.01 base it is imperceptible even tripled.");
-        ScFallDamage = Config.Bind("SprintersCurse", "Tier3FallDamageFraction", 0.30f,
+        ScFallDamage = Cfg.Bind("SprintersCurse", "Tier3FallDamageFraction", 0.30f,
             "Sprinter's Curse tier 3 cost. Fraction applied to whatever "
           + "fallDamageMultiplier already is, so it stacks on top of Leap.");
 
-                DaBreakerReset = Config.Bind("DeadAir", "Tier1BreakerResetFraction", 0.50f,
+                DaBreakerReset = Cfg.Bind("DeadAir", "Tier1BreakerResetFraction", 0.50f,
             "Dead Air tier 1. Fraction applied to base breakerResetTime (0.5). "
           + "POSITIVE means tripped breakers stay down LONGER, which is the "
           + "stealth benefit. The sign was inverted before 0.10.0 and shortened "
           + "the outage instead.");
-        DaSecurityReset = Config.Bind("DeadAir", "Tier2SecurityResetFraction", 0.50f,
+        DaSecurityReset = Cfg.Bind("DeadAir", "Tier2SecurityResetFraction", 0.50f,
             "Dead Air tier 2. Fraction applied to base securityResetTime (3). "
           + "POSITIVE means disabled security takes LONGER to come back online. "
           + "Same sign inversion as tier 1, fixed in 0.10.0.");
-        DaTamperGrace = Config.Bind("DeadAir", "Tier3TamperGraceAbsolute", 5,
+        DaTamperGrace = Cfg.Bind("DeadAir", "Tier3TamperGraceAbsolute", 5,
             "UNUSED as of 0.10.0. Dead Air ships as a two-tier chain. tamperGrace "
           + "is unobservable by construction: the tampering action completes in "
           + "under 3 seconds, so the grace window never expires at any value. "
           + "The key is retained so existing configs are not disturbed.");
 
-                LaInteractionRange = Config.Bind("LongArm", "Tier1InteractionRangeFraction", 0.20f,
+                LaInteractionRange = Cfg.Bind("LongArm", "Tier1InteractionRangeFraction", 0.20f,
             "Long Arm tier 1. Fraction applied to base interactionRange (1.585). "
           + "This is interaction reach, and it stacks with the disk's own "
           + "reachModifier main effect and with Tenacity/Brawn tier 1. "
           + "Confirmed read live and observed in play.");
-        LaCarryDistance = Config.Bind("LongArm", "Tier2CarryDistanceFraction", 0.40f,
+        LaCarryDistance = Cfg.Bind("LongArm", "Tier2CarryDistanceFraction", 0.40f,
             "UNUSED as of 0.10.0. carryDistance is owned by PlacementPlus while "
           + "that mod is enabled, so writes to it do nothing. The key is retained "
           + "so existing configs are not disturbed.");
-        LaThrowForce = Config.Bind("LongArm", "Tier3ThrowForceFraction", 0.40f,
+        LaThrowForce = Cfg.Bind("LongArm", "Tier3ThrowForceFraction", 0.40f,
             "Long Arm tier 2 as of 0.10.0, despite the key name, which is kept to "
           + "avoid orphaning the value on existing installs. Fraction applied to "
           + "base throwForce (6.4). Raised from 0.25 because 0.25 was too weak to "
           + "feel in play.");
 
-        SwRecovery = Config.Bind("SecondWind", "Tier1RecoveryFraction", 0.20f,
+        SwRecovery = Cfg.Bind("SecondWind", "Tier1RecoveryFraction", 0.20f,
             "Second Wind tier 1. Fraction applied to base playerRecoveryRate (0.225). "
           + "SUMMED with Iron Lung tier 2, which writes the same field.");
-        SwEnergy = Config.Bind("SecondWind", "Tier2EnergyFraction", -0.20f,
+        SwEnergy = Cfg.Bind("SecondWind", "Tier2EnergyFraction", -0.20f,
             "Second Wind tier 2. Fraction applied to base playerEnergyRate (0.116). "
           + "UNTESTED IN PLAY: this field has never been confirmed to be read live "
           + "rather than consumed once at startup. It will log correctly either way.");
-        SwBruised = Config.Bind("SecondWind", "Tier3BruisedFraction", -0.40f,
+        SwBruised = Cfg.Bind("SecondWind", "Tier3BruisedFraction", -0.40f,
             "Second Wind tier 3. Fraction applied to base combatHitChanceOfBruised "
           + "(0.1). Negative means you bruise less often. A small effect by design; "
           + "no vanilla disk claims this field.");
@@ -192,11 +195,11 @@ public class Plugin : BasePlugin
         int registered = 0, fakeTiers = 0;
         foreach (var d in Disks.All)
         {
-            bool enabled = Config.Bind(d.Key, "Enabled", d.Enabled, "Register this disk.").Value;
+            bool enabled = Cfg.Bind(d.Key, "Enabled", d.Enabled, "Register this disk.").Value;
             if (!enabled) { L.LogInfo("skipped: " + d.DiskName); continue; }
 
-            int price = Config.Bind(d.Key, "Price", d.Price, "Purchase price.").Value;
-            float value = Config.Bind(d.Key, "Value", d.Value,
+            int price = Cfg.Bind(d.Key, "Price", d.Price, "Purchase price.").Value;
+            float value = Cfg.Bind(d.Key, "Value", d.Value,
                 "Base effect value. Fractions are percentages (0.1 = 10%). "
               + "Ignored on disks whose effect is applied in code.").Value;
 
@@ -217,6 +220,19 @@ public class Plugin : BasePlugin
 
         L.LogInfo("=== SoDDiskPack done: " + registered + " registered, "
                 + fakeTiers + " with unimplemented tiers ===");
+    }
+
+
+    static ConfigFile OpenSettings(string newFileName)
+    {
+        string dest = Path.Combine(Paths.ConfigPath, newFileName);
+        string src = Path.Combine(Paths.ConfigPath, GUID + ".cfg");
+        if (File.Exists(src) && !File.Exists(dest))
+        {
+            File.Copy(src, dest);
+            L.LogInfo("Copied settings from " + GUID + ".cfg to " + newFileName);
+        }
+        return new ConfigFile(dest, true);
     }
 
     static void Register(DiskDef d, int price, float value)
