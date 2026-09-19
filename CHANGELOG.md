@@ -8,7 +8,7 @@ Most vanilla earner disks pay so little that there is no reason to buy one. A 50
 
 This changes disk payouts only. It is not an economy rebalance, and prices of ordinary goods are untouched.
 
-If you prefer the old numbers, set `VanillaBalance = true` in `ta.sod.vanillasplit.cfg` and the entire rebalance pass is skipped, prices included.
+If you prefer the old numbers, set `VanillaBalance = true` in `sm3gm.sod.vanillasplit.cfg` and the entire rebalance pass is skipped, prices included.
 
 ### Existing saves
 
