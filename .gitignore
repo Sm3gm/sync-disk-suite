@@ -1,1 +1,5 @@
-bin/\nobj/\n.DS_Store\n*.user\nSoDHello/\n
+bin/
+obj/
+.DS_Store
+*.user
+SoDHello/
