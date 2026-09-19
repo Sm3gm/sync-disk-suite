@@ -1,6 +1,7 @@
 using E = SyncDiskPreset.Effect;
 using U = SyncDiskPreset.UpgradeEffect;
 using System.Collections.Generic;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Unity.IL2CPP;
@@ -17,6 +18,7 @@ public class Plugin : BasePlugin
 {
     public const string GUID = "ta.sod.vanillasplit";
     internal static BepInEx.Logging.ManualLogSource L;
+    internal static ConfigFile Cfg;
 
     internal static ConfigEntry<bool> RemoveParents;
     internal static ConfigEntry<bool> ClearParentSpawnData;
@@ -41,22 +43,23 @@ public class Plugin : BasePlugin
     {
         L = Log;
         L.LogInfo("=== SoDVanillaSplit 0.5.0 starting ===");
+        Cfg = OpenSettings("sm3gm.sod.vanillasplit.cfg");
 
-        RemoveParents = Config.Bind("General", "RemoveVanillaParents", false,
+        RemoveParents = Cfg.Bind("General", "RemoveVanillaParents", false,
             "Remove the 17 split parent presets from Toolbox.allSyncDisks so only the "
           + "split disks are sold. Starch-SugarDaddy is never removed. "
           + "Leave false to run the splits ALONGSIDE vanilla.");
 
-        ClearParentSpawnData = Config.Bind("General", "ClearParentSpawnData", true,
+        ClearParentSpawnData = Cfg.Bind("General", "ClearParentSpawnData", true,
             "Also clear occupation and trait spawn data on the removed parents. "
           + "Toolbox removal alone suppresses vendor stock but NOT world loot: "
           + "a combined parent can still be found in the world. Only applies "
           + "when RemoveVanillaParents is true.");
 
-        SaleLocation = Config.Bind("General", "SaleLocation", "SyncClinic",
+        SaleLocation = Cfg.Bind("General", "SaleLocation", "SyncClinic",
             "Menu preset the split disks are added to. Blank for none.");
 
-        VanillaBalance = Config.Bind("General", "VanillaBalance", false,
+        VanillaBalance = Cfg.Bind("General", "VanillaBalance", false,
             "Revert every rebalanced payout, tier and price to the vanilla values shipped in 1.0.3. "
           + "When true, the per-disk price keys below are ignored in favour of the original prices.");
 
@@ -67,14 +70,14 @@ public class Plugin : BasePlugin
         int made = 0;
         foreach (var d in Splits.All)
         {
-            bool on = Config.Bind(d.Parent, d.DiskName, true,
+            bool on = Cfg.Bind(d.Parent, d.DiskName, true,
                 "Register this split disk.").Value;
             if (!on) { L.LogInfo("skipped: " + d.DiskName); continue; }
 
             int priceDefault = RebalanceByDisk.TryGetValue(d.DiskName, out var row)
                               ? row.NewPrice : d.Price;
 
-            Prices[d.DiskName] = Config.Bind(d.Parent, d.DiskName + " price", priceDefault,
+            Prices[d.DiskName] = Cfg.Bind(d.Parent, d.DiskName + " price", priceDefault,
                 "Credits. Split disks are priced for what the branch does, not "
               + "what the parent cost, so a set of splits costs more in total "
               + "than the disk they came from. Price is not a save key and can "
@@ -95,6 +98,19 @@ public class Plugin : BasePlugin
         Harmony.CreateAndPatchAll(typeof(LootRemovePatch));
         L.LogInfo("=== SoDVanillaSplit phase 1 done, " + made + " of "
                 + Splits.All.Length + " registered ===");
+    }
+
+
+    static ConfigFile OpenSettings(string newFileName)
+    {
+        string dest = Path.Combine(Paths.ConfigPath, newFileName);
+        string src = Path.Combine(Paths.ConfigPath, GUID + ".cfg");
+        if (File.Exists(src) && !File.Exists(dest))
+        {
+            File.Copy(src, dest);
+            L.LogInfo("Copied settings from " + GUID + ".cfg to " + newFileName);
+        }
+        return new ConfigFile(dest, true);
     }
 
     // Phase 1. Vanilla presets do not exist yet, so this registers shells with
