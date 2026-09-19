@@ -476,6 +476,7 @@ public class Plugin : BasePlugin
 [HarmonyPatch(typeof(UpgradeEffectController), "OnSyncDiskChange")]
 public static class TierPatch
 {
+    [HarmonyPostfix]
     static void Postfix()
     {
         Plugin.RecomputeAll();
@@ -485,7 +486,7 @@ public static class TierPatch
 // _Experimental only. Both lists default empty and change nothing.
 // disabled=true does NOT remove a disk from clinic stock; only removal from
 // Toolbox.allSyncDisks does. Kept for testing, not for release use.
-[HarmonyPatch(typeof(Toolbox), "Start")]
+[HarmonyPatch(typeof(Toolbox), nameof(Toolbox.Start))]
 public static class DisablePatch
 {
     static bool done;
@@ -503,6 +504,7 @@ public static class DisablePatch
         return names;
     }
 
+    [HarmonyPostfix]
     static void Postfix()
     {
         if (done) return;
