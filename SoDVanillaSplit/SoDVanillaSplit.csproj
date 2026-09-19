@@ -6,6 +6,10 @@
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/core', '*.dll'))" />
     <Reference Include="$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/../SoDHello/refs/interop', '*.dll'))" />
